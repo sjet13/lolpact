@@ -519,8 +519,3 @@ while loop:
         os.system('cls')
         loop = False
 
-
-#write to json file
-write_file = open('%s/dropbox/code/python/app/lolpact/complete.json'%(usrdrive), 'w')
-write_file.write(json.dumps(full, indent=4))
-write_file.close()
