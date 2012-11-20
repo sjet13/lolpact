@@ -1,5 +1,5 @@
 LoLPaCT - League of Legends Player and Champion Tracker
-=======
+=========
 Work in Progress
 
 Portable Version:
