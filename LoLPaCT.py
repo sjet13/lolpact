@@ -1,121 +1,33 @@
 #!/usr/bin/env python
 from __future__ import division
 from datetime import datetime
-from collections import defaultdict
-from collections import OrderedDict
+from utils import com, getsec, gethour
+from collections import defaultdict, OrderedDict
 import time
 import os
 import json
 import re
 import msvcrt
+import sys
 
+#set clearscreen to win32 or linux
+clear_fn = 'cls' if sys.platform == 'win32' else 'clear'
 usrdrive = os.getenv('SystemDrive')
 
 loop = True  # Main loop
 listofgames = []  # A list of games that are being imported.
 
+clear_fn = 'cls' if sys.platform == 'win32' else 'clear'  # clearscreen crossplatform
+
 overallstats = {}  # Dict of overall stats for a player
-aggregate_stats = ['kills', 'deaths', 'assists', 'physicalDamageDealt', 'magicDamageDealt', 'physicalDamageTaken', 'magicDamageTaken', 'lost', 'gold', 'healed', 'minions', 'neutralMinionsKilled']  # list of stats I care about
 
-#json with all the collected info
-p = open('%s/dropbox/code/python/app/lolpact/complete.json' % (usrdrive))
-full = json.load(p)
-p.close()
+# list of stats I care about
+aggregate_stats = ['kills', 'deaths', 'assists', 'physicalDamageDealt', 'magicDamageDealt', 'physicalDamageTaken', 'magicDamageTaken', 'lost', 'gold', 'healed', 'minions', 'neutralMinionsKilled']
 
-#load file and make it searchable.
-try:  # Home Path
-    for files in os.listdir('%s/Users/Administrator/Documents/LOLReplay/replays' % (usrdrive)):
-        if files.endswith('.lrf_done'):
-            listofgames.append(files)
-except WindowsError:  # Work path
-    for files in os.listdir('%s/' % (usrdrive)):
-        if files.endswith('.lrf5'):
-            listofgames.append(files)
-
-print 'Reading new files...\n'
-for gamecount in range(len(listofgames)):
-    print listofgames[gamecount]
-    #opens (by default) C:/<first file in directory>
-    try:  # can be deleted latars
-        o = open('%s/Users/Administrator/Documents/LOLReplay/replays/%s' % (usrdrive, listofgames[gamecount]), 'r')  # Home Path
-    except WindowsError: 
-        o = open('%s/%s' % (usrdrive, listofgames[gamecount]), 'r')  # Work Path
-
-    data = o.read()
-    o.close()
-    fullpath = '%s/Users/Administrator/Documents/LOLReplay/replays/' % (usrdrive) + listofgames[gamecount]
-    #os.rename(fullpath,fullpath + '_done')
-    x = 0
-
-    #Grabs the date of the match
-    tempdate = re.search(r'"createTime"[\s\S].*(PM|AM)"', data)
-    x = tempdate.group()
-    z = x[14:-1]
-    date = datetime.strptime(z, '%b %d, %Y %I:%M:%S %p')
-    date = str(date)
-
-    #Match duration "matchLength":1247,
-    temptime = re.findall(r'"matchLength"\s*(\:.*?\,)', data)
-    temptime = int(temptime[0][1:-1])
-    seconds = int(temptime % 60)
-    #To fix seconds being rounded. (20 is 2 instead.)
-    if seconds < 9:
-        seconds = seconds * 10
-
-    seconds = str(seconds)
-    minutes = str(int(temptime / 60))
-    length = minutes + ':' + seconds
-
-    #Readies the json file of the matches results
-    data = re.findall(r'"players":\s*(\[.*?\])', data)
-    data = json.loads(data[0])
-
-    for x in data:
-        x['match'] = listofgames[gamecount]
-        x['datetime'] = date
-        x['length'] = length
-        #Checks for stats that may be missing, adds 0 value if so.
-        try:
-            x['neutralMinionsKilled'] + 1
-        except KeyError:
-            x['neutralMinionsKilled'] = 0
-        try:
-            x['healed'] + 1
-        except KeyError:
-            x['healed'] = 0
-        try:
-            x['magicDamageDealt'] + 1
-        except KeyError:
-            x['magicDamageDealt'] = 0
-    #Add delay, some errors if it reads files to fast?
-    time.sleep(0.2)
-    full = full + data
-
-
-#Simply adds commands for every 1000's. Awesome function!
-def com(number):
-    s = '%d' % number
-    groups = []
-    while s and s[-1].isdigit():
-        groups.append(s[-3:])
-        s = s[:-3]
-    return s + ','.join(reversed(groups))
-
-
-#gets seconds. Turns 32:20 (MM:SS) into seconds for mathing
-def getsec(s):
-    l = s.split(':')
-    return int(l[0]) * 60 + int(l[1])
-
-
-#Turns 24243 (S) into HH:MM:SS (or MM:SS if under 1 hour)
-def gethour(t):
-    m, s = divmod(t, 60)
-    h, m = divmod(m, 60)
-    time = '%d:%02d:%02d' % (h, m, s)
-    if h == 0:
-        time = '%02d:%02d' % (m, s)
-    return time
+#list of Settings:
+settingexplain = ['God Mode', 'Show Players with 1 game played in list.', 'Extended player info.', 'EXPERIMENTAL-Show Leveling rate (NYI).', 'Show overall averages when showing champ info.', 'Main profile.', 'Smurf Profile', 'Compare your main profile to others. (NYI)']
+setting = ['0', '1', '1', '1', '1', 'AndyBear13', 'None', '1']
+settingloc = ['0', '1', '2', '3', '4', '5', '6', '7']
 
 
 #list all player names that have been played with
@@ -123,11 +35,11 @@ def lister():
     quit = ''
     count = 0
     global setting
-    os.system('cls')
+    os.system(clear_fn)
     print 'List all Players (list), or type in a name'
     usrinput = raw_input('Enter: ')
     if usrinput == 'list':
-        os.system('cls')
+        os.system(clear_fn)
         count = 0
         players = defaultdict(int)  # dict for counting how many times a player has been played with.
         l = []  # Temp list for displaying players and times played with.
@@ -184,11 +96,11 @@ def lister():
 def settings():
     #changes settings. Mostly for printing more or less information. Also choosing favourite summoners.
     #possibly save these settings between sessions.
-    os.system('cls')
+    os.system(clear_fn)
     global setting
     defloop = True
     while defloop:
-        os.system('cls')
+        os.system(clear_fn)
         print 'Settings: Hit your selection to toggle a setting, or (Q) to exit and save.'
         for x in range(len(setting)):
             if x == 0:
@@ -227,11 +139,11 @@ def settings():
             setting[6] = usrinput
 
         if usrinput == 'q' or usrinput == 'Q':
-            defloop = False
+            break
 
 
 def overall(usrinput):
-    os.system('cls')
+    os.system(clear_fn)
     length = 0
     #vars
     usr_stats = overallstats.get(usrinput)
@@ -279,7 +191,7 @@ def champs(summ):
     while defloop:
         l = []
         o = []
-        os.system('cls')
+        os.system(clear_fn)
         for x in full:
             if summ == x['summoner']:
                 if x['champion'] in o:
@@ -295,11 +207,11 @@ def champs(summ):
         usrinput = raw_input('\nEnter a Champion name to view more info on it, or type Q to quit:\n')
 
         if usrinput == 'q' or usrinput == 'Q':
-            defloop = False
+            break
 
         if usrinput in o:
             champinfo(usrinput, summ)
-            defloop = False
+            break
 
         else:
             print 'Not a valid champion selection. Press a key to try again.'
@@ -348,7 +260,7 @@ def champinfo(champ, summ):
     #avg game length = alength
     alength = length / (usr_stats['won'] + usr_stats['lost'])
     alength = gethour(alength)
-    os.system('cls')
+    os.system(clear_fn)
 
     print '~Total Stats Across All Games for %s with %s~ \n' % (summ, champ)
     print 'Games: %s - Wins: %s - Losses %s - Win: %.2f%% - Time Played: %s' % (usr_stats['won'] + usr_stats['lost'], usr_stats['won'], usr_stats['lost'], usr_stats['won'] / (usr_stats['won'] + usr_stats['lost']) * 100, tlength)
@@ -376,7 +288,7 @@ def champinfo(champ, summ):
 #Not sure if this is a good feature.
 def maps(summ):
     count = 0
-    os.system('cls')
+    os.system(clear_fn)
     quit = ''
     for x in full:
         if summ == x['summoner']:
@@ -401,7 +313,7 @@ def maps(summ):
                 print 'Press a key to view more or Q to quit\n'
                 quit = msvcrt.getch()
                 count = 0
-                os.system('cls')
+                os.system(clear_fn)
     print '\nPress a Key to continue'
     msvcrt.getch()
 
@@ -410,7 +322,7 @@ def sort(summ):
     print 'Sort by: Champion (1), Date (2), Game Length (3)'
     usrinput = msvcrt.getch()
 
-    os.system('cls')
+    os.system(clear_fn)
     count = 0
     ID = 0
     quit = ''
@@ -447,7 +359,7 @@ def sort(summ):
             count = 0
             if quit == 'q' or quit == 'Q':
                 break
-            os.system('cls')
+            os.system(clear_fn)
 
     usrinput = raw_input('Enter an ID to view that game, or just hit enter: ')
 
@@ -465,7 +377,7 @@ def gameid(summ, matchid):
             if summ == x['summoner']:
                 myteam = x['team']
                 originalteam = x['team']
-                os.system('cls')
+                os.system(clear_fn)
                 print 'Your Info \n'
                 print 'Champion: %s - Team: %s' % (x['champion'], x['team'])
                 print 'Date: %s - Won: %s - Length: %s' % (x['datetime'], x['won'], x['length'])
@@ -491,12 +403,12 @@ def gameid(summ, matchid):
                     continue
                 elif myteam == x['team']:
                     if count == 0:
-                        os.system('cls')
+                        os.system(clear_fn)
                         print '~Player: %s~' % (page)
 
                     count += 1
                     try:
-                        temp = x['minions']
+                        x['minions'] + 1
                     except KeyError:
                         print 'Summoner: %s - Champion: %s - ~LEAVER~\n' % (x['summoner'], x['champion'])
                         continue
@@ -539,7 +451,7 @@ def gameid(summ, matchid):
 def selection(summ):
     defloop = True
     while defloop:
-        os.system('cls')
+        os.system(clear_fn)
         print 'Summoner: %s' % (summ)
         print 'Overall Stats (1), Champion (2), Map (3), Sort (4), Back (6)'
         usrinput = msvcrt.getch()
@@ -556,15 +468,92 @@ def selection(summ):
             sort(summ)
 
         if usrinput == '6':
-            defloop = False
+            break
 
-#list of Settings:
-settingexplain = ['God Mode', 'Show Players with 1 game played in list.', 'Extended player info.', 'EXPERIMENTAL-Show Leveling rate (NYI).', 'Show overall averages when showing champ info.', 'Main profile.', 'Smurf Profile', 'Compare your main profile to others. (NYI)']
-setting = ['0', '1', '1', '1', '1', 'AndyBear13', 'None', '1']
-settingloc = ['0', '1', '2', '3', '4', '5', '6', '7']
+
+#json with all the collected info
+p = open('%s/dropbox/code/python/app/lolpact/complete.json' % (usrdrive))
+full = json.load(p)
+p.close()
+
+#load file and make it searchable.
+try:  # Home Path
+    for files in os.listdir('%s/Users/Administrator/Documents/LOLReplay/replays' % (usrdrive)):
+        if files.endswith('.lrf_done'):
+            listofgames.append(files)
+except:  # Work path
+    for files in os.listdir('%s/' % (usrdrive)):
+        if files.endswith('.lrf5'):
+            listofgames.append(files)
+
+print 'Reading new files...\n'
+for gamecount in range(len(listofgames)):
+    print listofgames[gamecount]
+    #opens (by default) C:/<first file in directory>
+    try:  # can be deleted latars
+        o = open('%s/Users/Administrator/Documents/LOLReplay/replays/%s' % (usrdrive, listofgames[gamecount]), 'r')  # Home Path
+    except:
+        o = open('%s/%s' % (usrdrive, listofgames[gamecount]), 'r')  # Work Path
+
+    data = o.read()
+    o.close()
+    fullpath = '%s/Users/Administrator/Documents/LOLReplay/replays/' % (usrdrive) + listofgames[gamecount]
+    #os.rename(fullpath,fullpath + '_done')
+    x = 0
+
+    #Grabs the date of the match
+    tempdate = re.search(r'"createTime"[\s\S].*(PM|AM)"', data)
+    x = tempdate.group()
+    z = x[14:-1]
+    date = datetime.strptime(z, '%b %d, %Y %I:%M:%S %p')
+    date = str(date)
+
+    #Match duration "matchLength":1247,
+    temptime = re.findall(r'"matchLength"\s*(\:.*?\,)', data)
+    temptime = int(temptime[0][1:-1])
+    seconds = int(temptime % 60)
+    #To fix seconds being rounded. (20 is 2 instead.)
+    if seconds < 9:
+        seconds = seconds * 10
+
+    seconds = str(seconds)
+    minutes = str(int(temptime / 60))
+    length = minutes + ':' + seconds
+
+    #Readies the json file of the matches results
+    data = re.findall(r'"players":\s*(\[.*?\])', data)
+    data = json.loads(data[0])
+
+    for x in data:
+        x['match'] = listofgames[gamecount]
+        x['datetime'] = date
+        x['length'] = length
+        #Checks for stats that may be missing, adds 0 value if so.
+        try:
+            x['neutralMinionsKilled'] + 1
+        except KeyError:
+            x['neutralMinionsKilled'] = 0
+        try:
+            x['healed'] + 1
+        except KeyError:
+            x['healed'] = 0
+        try:
+            x['magicDamageDealt'] + 1
+        except KeyError:
+            x['magicDamageDealt'] = 0
+    #Add delay, some errors if it reads files to fast?
+
+    time.sleep(0.2)
+    full = full + data
+
+#write to json file
+write_file = open('%s/dropbox/code/python/app/lolpact/complete.json' % (usrdrive), 'w')
+write_file.write(json.dumps(full, indent=4))
+write_file.close()
+
 #main Menu
 while loop:
-    os.system('cls')
+    os.system(clear_fn)
     print 'League of Legends Player and Champion Tracker - LoLPaCT'
     print 'Favourites (1), Search Players (2), Settings (3) Exit (6):'
     usrinput = msvcrt.getch()
@@ -596,18 +585,12 @@ while loop:
                 continue
             usrinput = ''
 
-    if usrinput == '2':
+    elif usrinput == '2':
         lister()
 
-    if usrinput == '3':
+    elif usrinput == '3':
         settings()
 
-    if usrinput == '6':
-        os.system('cls')
-        loop = False
-
-
-#write to json file
-write_file = open('%s/dropbox/code/python/app/lolpact/complete.json' % (usrdrive), 'w')
-write_file.write(json.dumps(full, indent=4))
-write_file.close()
+    elif usrinput == '6':
+        os.system(clear_fn)
+        break
